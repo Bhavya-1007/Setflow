@@ -3,7 +3,7 @@ import './globals.css';
 export const metadata = {
   title: 'SetFlow — AI DJ Set Planner',
   description:
-    'SetFlow is an AI DJ set planner in development. Organize songs by genre, BPM, musical key, and energy, with suggested transitions. Created by Bhavya Poddar.',
+    'Plan a DJ set from your tracks. Get an editable track order, energy curve, and transition notes for your next gig. Created by Bhavya Poddar.',
   icons: { icon: '/icon.svg' },
 };
 
