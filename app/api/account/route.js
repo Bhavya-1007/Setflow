@@ -5,6 +5,7 @@ import { hashPassword, verifyPassword } from '@/lib/password.mjs';
 import {
   addUser, createSession, rateLimitAccount, removeSession, sessionCookieOptions, SESSION_COOKIE,
 } from '@/lib/account';
+import { sendVerificationCode } from '@/lib/email-verification';
 import { ApiError, apiFailure, checkOrigin, readJson } from '@/lib/http';
 
 const loginFields = {
@@ -47,7 +48,17 @@ export async function POST(request) {
     }
 
     const token = await createSession(user.id);
-    const response = NextResponse.json({ ok: true });
+    let next = '/studio';
+    if (intent === 'signup') {
+      next = '/verify-email?delivery=sent';
+      try {
+        await sendVerificationCode(user.id);
+      } catch (error) {
+        console.error('Signup verification email failed', { type: error.name, code: error.code });
+        next = '/verify-email?delivery=failed';
+      }
+    }
+    const response = NextResponse.json({ ok: true, next });
     response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions(request));
     return response;
   } catch (error) {

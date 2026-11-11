@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { currentUser } from '@/lib/account';
+import { currentUser, hasVerifiedEmail } from '@/lib/account';
 import { stripeClient, syncCustomer } from '@/lib/billing';
 
 export const maxDuration = 60;
@@ -8,6 +8,7 @@ export async function GET(request) {
   const url = new URL(request.url);
   const user = await currentUser();
   if (!user) return NextResponse.redirect(new URL('/login', url));
+  if (!hasVerifiedEmail(user)) return NextResponse.redirect(new URL('/verify-email', url));
   const sessionId = url.searchParams.get('session_id');
   const destination = new URL('/studio?billing=pending', url);
   if (!sessionId?.startsWith('cs_') || !user.stripe_customer_id) {

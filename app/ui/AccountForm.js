@@ -13,11 +13,11 @@ export default function AccountForm({ signup }) {
     setError('');
     setBusy(true);
     try {
-      await sendRequest('/api/account', 'POST', {
+      const { next } = await sendRequest('/api/account', 'POST', {
         intent: signup ? 'signup' : 'login',
         ...Object.fromEntries(form),
       });
-      window.location.assign('/studio');
+      window.location.assign(next);
     } catch (failure) {
       setError(failure.message);
       setBusy(false);

@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { currentUser } from '@/lib/account';
+import { currentUser, hasVerifiedEmail } from '@/lib/account';
 import { database } from '@/lib/db.mjs';
 import { listSets, planAllowance } from '@/lib/sets';
 import { checkoutIsTest } from '@/lib/billing';
@@ -11,6 +11,7 @@ export const metadata = { title: 'Studio | SetFlow' };
 export default async function StudioPage({ searchParams }) {
   const user = await currentUser();
   if (!user) redirect('/login');
+  if (!hasVerifiedEmail(user)) redirect('/verify-email');
   const [savedSets, allowance, query] = await Promise.all([
     listSets(user.id),
     planAllowance(database(), user),
