@@ -1,4 +1,5 @@
 import Brand, { FlowMark } from './ui/Brand';
+import StudioNav from './ui/StudioNav';
 
 const waveHeights = [
   12, 21, 15, 29, 20, 36, 25, 45, 32, 51, 39, 60, 43, 68, 51, 75,
@@ -61,6 +62,7 @@ export default function Home() {
           <a className="button button-primary header-cta" href="/signup">Try SetFlow</a>
         </nav>
       </header>
+      <StudioNav />
 
       <main id="home" className="landing-main">
         <section className="hero" aria-labelledby="hero-title">
