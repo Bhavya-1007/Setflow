@@ -7,6 +7,25 @@ import { analyzeAudioFile } from '@/lib/music/audio-client';
 
 const statusLabels = { published: 'Posted track cue', unidentified: 'Unidentified', ambiguous: 'Ambiguous overlap', unparsed: 'Artist / title unconfirmed', section: 'Posted section' };
 
+export function MetricCurve({ tracks, duration, metric, title, onSeek }) {
+  const known = tracks.filter(track => Number.isFinite(track[metric]));
+  const min = metric === 'energy' ? 1 : Math.floor(Math.min(...known.map(track => track[metric]), 120) / 10) * 10 - 10;
+  const max = metric === 'energy' ? 10 : Math.ceil(Math.max(...known.map(track => track[metric]), 130) / 10) * 10 + 10;
+  const x = track => 40 + track.start / duration * 720;
+  const y = track => 100 - (track[metric] - min) / (max - min) * 75;
+  return <section className="metric-curve"><div className="card-heading"><h3>{title}</h3><span className="small-tag">{known.length} CUES WITH DATA</span></div>
+    {known.length ? <svg viewBox="0 0 800 130" role="img" aria-label={`${title}; gaps mean unavailable data. Catalog or posted values, not measured mix audio.`}>
+      {[min, max].map(value => <g key={value}><line x1="40" x2="760" y1={value === min ? 100 : 25} y2={value === min ? 100 : 25} className="curve-guide" /><text x="2" y={value === min ? 104 : 29}>{value}</text></g>)}
+      {tracks.map((track, index) => Number.isFinite(track[metric]) && <g key={track.id}>
+        {index > 0 && Number.isFinite(tracks[index - 1][metric]) && <line x1={x(tracks[index - 1])} y1={y(tracks[index - 1])} x2={x(track)} y2={y(track)} className="curve-line" strokeDasharray={metric === 'energy' && track.estimatedEnergy ? '5 4' : undefined} />}
+        <circle cx={x(track)} cy={y(track)} r="4" className="curve-point"><title>{secondsLabel(track.start)} · {track.title}: {track[metric]}{track.estimatedEnergy && metric === 'energy' ? ' (tempo-only estimate)' : ''}</title></circle>
+      </g>)}
+      <text x="40" y="126">0:00</text><text x="760" y="126" textAnchor="end">{secondsLabel(duration)}</text>
+    </svg> : <p className="curve-empty">No {metric === 'bpm' ? 'BPM' : 'energy'} data available. No curve has been invented.</p>}
+    {known.length > 0 && <div className="curve-cues">{known.map(track => <button className="text-button" key={track.id} onClick={() => onSeek(track.start)}>{secondsLabel(track.start)} · {track[metric]}{metric === 'energy' && track.estimatedEnergy ? ' est.' : ''}</button>)}</div>}
+  </section>;
+}
+
 function Curve({ segments, duration, metric, title }) {
   const value = segment => metric === 'tempo' ? segment.tempo.value : segment.energy;
   const known = segments.filter(segment => value(segment) !== null && !segment.silent);
@@ -78,6 +97,7 @@ export default function Breakdown() {
     } catch (failure) { if (job.current === id && failure.name !== 'AbortError') setAudioError(failure.message); }
     finally { if (job.current === id) { setAudioBusy(false); setProgress(''); } }
   }
+  const extent = result?.video.duration || Math.max(1, ...(result?.tracks.map(track => track.start) || []));
   function seekVideo(seconds) { audioRef.current?.pause(); setCue(previous => ({ seconds: Math.floor(seconds), count: previous.count + 1 })); }
   function seekAudio(seconds) {
     if (audioRef.current) audioRef.current.currentTime = seconds;
@@ -102,10 +122,20 @@ export default function Breakdown() {
       </div>
       {progress && <p className="notice" role="status">{progress}</p>}{audioError && <p className="notice notice-error" role="alert">{audioError}</p>}
     </section>
-    {analysis && <AudioResults analysis={analysis} result={result} aligned={aligned} offset={Number(offset)} seek={seekAudio} />}
+    {analysis && !result && <AudioResults analysis={analysis} result={result} aligned={aligned} offset={Number(offset)} seek={seekAudio} />}
     {result && <div className="breakdown-results">
       <div className="card-heading"><div><h2>{result.video.title}</h2><p className="subtext">{result.video.author} · {result.video.duration ? secondsLabel(result.video.duration) : 'Video duration unavailable'}</p></div><a href={result.video.url} className="quiet-link" target="_blank" rel="noopener noreferrer">Open on YouTube ↗</a></div>
       <div className="breakdown-top"><div><iframe key={`${result.video.id}-${cue.count}`} className="set-player" title={result.video.title} src={`https://www.youtube-nocookie.com/embed/${result.video.id}?start=${cue.seconds}&autoplay=${cue.count ? 1 : 0}`} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen /><p className="field-help" role="status">Video cue: {secondsLabel(cue.seconds)} · <a className="inline-link" href={`${result.video.url}&t=${cue.seconds}s`} target="_blank" rel="noopener noreferrer">Open this moment on YouTube</a> if embedding is restricted.</p></div><aside className="app-card evidence-card"><p className="small-tag">TRACK LABELS · NOT AUDIO ANALYSIS</p><div className="breakdown-stats"><div><strong>{result.publishedCount}</strong><span>posted track cues</span></div></div><p className="subtext">{result.source}</p><p className="field-help">Track names are optional labels. They neither supply audio nor prove blend boundaries.</p>{result.noTracklist === true && <p className="notice">No identifiable tracklist in the checked source. Audio-file measurements still work with unknown song names.</p>}{result.warnings.map(warning => <p key={warning} className="field-help">{warning}</p>)}</aside></div>
+      <section className="app-card timeline-card"><div className="card-heading"><h2>The shape of the set.</h2><span className="small-tag">CLICK A CUE TO LISTEN</span></div>
+        <p className="field-help">{result.video.duration ? "Timeline covers the video duration." : "Timeline covers the posted cues only; video duration is unavailable."}</p><p className="field-help">Blocks run between posted cues; they are not measured track durations or blend lengths. Striped sections are unidentified or ambiguous.</p>
+        <div className="timeline-scroll"><div className="set-timeline" aria-label="Track cue timeline">{result.tracks.map(track => <button type="button" key={track.id} className={`timeline-block ${track.status === 'published' ? 'known' : track.status === 'section' ? 'section' : 'unknown'} ${cue.seconds === track.start ? 'selected' : ''}`} style={{ flex: Math.max(1, (track.end ?? extent) - track.start) }} title={`${secondsLabel(track.start)} · ${track.artist ? track.artist + ' — ' : ''}${track.title}`} aria-label={`Jump to ${secondsLabel(track.start)}: ${track.title}`} onClick={() => seekVideo(track.start)}><span>{secondsLabel(track.start)}</span></button>)}</div></div>
+        <div className="energy-labels"><span>0:00</span><span>{result.video.duration ? secondsLabel(extent) : 'Posted cues only (duration unknown)'}</span></div>
+        <div className="timeline-legend"><span>● Posted cue</span><span>▧ Unidentified / unconfirmed</span><span>○ Other posted section</span></div>
+        {!analysis && <MetricCurve tracks={result.tracks} duration={extent} metric="bpm" title="BPM across posted cues · catalog / posted" onSeek={seekVideo} />}
+        {!analysis && <MetricCurve tracks={result.tracks} duration={extent} metric="energy" title="Energy across posted cues · posted values" onSeek={seekVideo} />}
+        <p className="field-help">Catalog / posted values are not measured set audio. Missing values stay blank; catalog BPM alone does not establish energy. Uploaded-audio measurements appear separately below.</p>
+      </section>
+      {analysis && <AudioResults analysis={analysis} result={result} aligned={aligned} offset={Number(offset)} seek={seekAudio} />}
       <details className="app-card" open><summary>Published track labels & catalog metadata</summary><ol className="breakdown-tracklist">{result.tracks.map(track => <li key={track.id}><button className="cue-button" onClick={() => seekVideo(track.start)} aria-label={`Play ${track.title} at ${secondsLabel(track.start)}`}>▶ {secondsLabel(track.start)}</button><div className="cue-content"><span className={`evidence-tag ${track.status !== 'published' ? 'uncertain' : ''}`}>{statusLabels[track.status]}</span><h3>{track.title}</h3><p className="subtext">{track.artist || 'Artist not identified'}</p><div className="metadata-chips"><span>{track.bpm ? `${track.bpm} BPM · ${track.bpmSource?.startsWith('Deezer') ? 'catalog recording' : 'posted'} · not measured` : 'Catalog / posted BPM unavailable'}</span><span>{track.key ? `Key ${track.key} · posted · not measured` : 'Posted key unavailable'}</span></div><MusicLinks links={track.links} />{track.evidence && <details className="cue-evidence"><summary>View source text</summary><blockquote>{track.evidence}</blockquote></details>}</div></li>)}</ol></details>
     </div>}
   </>;
