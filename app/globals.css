@@ -8,6 +8,21 @@
 }
 
 /* Standalone music tools */
+.audio-upload, .audio-results { margin-bottom: 26px; }
+.audio-upload audio { width: 100%; max-width: 600px; }
+.audio-upload .audio-alignment { display: flex; align-items: flex-start; font-weight: 400; line-height: 1.6; }
+.audio-alignment input { width: auto; margin-top: 4px; accent-color: var(--accent); }
+.audio-access h2 { font-size: 18px; }
+.audio-access p { font-size: 13px; line-height: 1.7; }
+.audio-segment-strip { display: flex; overflow-x: auto; gap: 3px; padding: 6px 3px; margin: 24px 0; }
+.audio-segment-strip button { flex: 1 0 48px; min-height: 48px; border: 1px solid #80a955; border-radius: 4px; background: #426b25; color: white; font-size: 10px; }
+.audio-table-scroll { overflow-x: auto; margin: 24px 0; }
+.audio-table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: left; min-width: 660px; }
+.audio-table caption { text-align: left; color: var(--muted); padding: 10px 0; }
+.audio-table th, .audio-table td { padding: 16px 10px; border-bottom: 1px solid #ffffff18; vertical-align: top; line-height: 1.6; }
+.audio-table th { color: var(--accent); font-weight: 500; }
+.audio-table small { display: block; color: var(--muted); font-size: 11px; line-height: 1.6; margin-top: 5px; }
+.audio-table .text-button { white-space: nowrap; }
 .studio-tabs { display: flex; gap: 30px; border-bottom: 1px solid #ffffff18; overflow-x: auto; }
 .studio-tabs a { flex-shrink: 0; padding: 22px 0 18px; color: var(--muted); font-size: 14px; border-bottom: 2px solid transparent; }
 .studio-tabs a[aria-current="page"] { color: var(--accent); border-color: var(--accent); }

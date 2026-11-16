@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { youtubeId, secondsLabel, searchLinks } from '../lib/music/providers.mjs';
 import { catalogTrack, rankCandidates, searchTracks, getTrack } from '../lib/music/discover.mjs';
-import { embeddedJson, extractVideoPage, parseTracklist, buildBreakdown, withEnergyEstimate } from '../lib/music/breakdown.mjs';
+import { embeddedJson, extractVideoPage, parseTracklist, buildBreakdown } from '../lib/music/breakdown.mjs';
 
 test('YouTube URLs use exact allowed hosts and validated video IDs', () => {
   for (const url of ['https://youtu.be/RvRhUHTV_8k?t=30', 'https://www.youtube.com/watch?v=RvRhUHTV_8k', 'https://youtube.com/live/RvRhUHTV_8k']) assert.equal(youtubeId(url), 'RvRhUHTV_8k');
@@ -61,12 +61,11 @@ test('bad timestamps are ignored and overlapping cues are ambiguous, not false i
   assert.ok(result.warnings.length);
 });
 
-test('source BPM and energy remain distinct from a labelled tempo-only estimate', () => {
+test('source BPM and energy remain posted metadata and missing energy is not synthesized', () => {
   const result = parseTracklist('0:00 Artist - Track | 120 BPM | energy 8/10 | key: 8A\n5:00 Other - Track | 130 BPM', 600);
   assert.equal(result.tracks[0].bpm, 120); assert.equal(result.tracks[0].energy, 8); assert.equal(result.tracks[0].key, '8A');
-  assert.equal(withEnergyEstimate(result.tracks[0]).estimatedEnergy, undefined);
-  assert.equal(withEnergyEstimate(result.tracks[1]).estimatedEnergy, true);
-  assert.equal(withEnergyEstimate({ energy: null, bpm: null }).energy, null);
+  assert.equal(result.tracks[0].estimatedEnergy, undefined);
+  assert.equal(result.tracks[1].energy, null);
 });
 
 test('posted song links are marked as posted and never confused with search links', () => {
@@ -88,7 +87,10 @@ test('no posted tracklist yields the entire unidentified span with no recognitio
 });
 
 test('provider failures preserve source evidence and are not called missing tracklists', async () => {
-  await assert.rejects(() => buildBreakdown({ url: 'https://youtu.be/Ca6pjR2TLns' }, { metadata: async () => { throw new Error('Provider offline'); } }), /Provider offline/);
+  const unavailable = await buildBreakdown({ url: 'https://youtu.be/Ca6pjR2TLns' }, { metadata: async () => { throw new Error('Provider offline'); } });
+  assert.equal(unavailable.noTracklist, null);
+  assert.equal(unavailable.metadataAvailable, false);
+  assert.equal(unavailable.audioAccess.supported, false);
   const result = await buildBreakdown({ url: 'https://youtu.be/Ca6pjR2TLns' }, {
     metadata: async () => ({ title: 'Set', description: '0:00 Artist - Song', duration: 600, source: 'YouTube description' }),
     match: async () => { throw new Error('Catalog offline'); },

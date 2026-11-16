@@ -10,43 +10,48 @@ The three navigation links are **Set Planner**, **Discover**, and **Set Breakdow
 - Track identities, art, preview URLs, and available BPM come from catalog results. Zero BPM means missing. This provider has no key data, so keys are shown as unavailable. There are no generated song names or invented exact musical attributes.
 - Previews may be unavailable by region or expire; catalog/listening links remain available. Playing one preview pauses the others.
 
-## Set Breakdown
+## Set Breakdown: audio access
 
-- Accepts public YouTube video URLs. Uses the public watch-page description and duration without retrieving audio. If `YOUTUBE_API_KEY` is configured, uses YouTube Data API v3 `videos.list` (`snippet,contentDetails`) instead. The key is optional and server-only; it is not required for the tested first version.
-- A description-access error is shown as an error, never as proof that a tracklist does not exist. Public page metadata is best-effort: YouTube can change its page format or limit server access. The parser checks both playback metadata and the full displayed description in the page data, never the truncated HTML description tag. The API-key option is the more stable integration.
-- Parses timestamps before or after an artist–title entry, preserves remix text, sorts cues, retains unknown IDs, flags duplicate timestamps as ambiguous, and separates intro/interview/outro sections. A pasted tracklist can replace the description, clearly labelled user-supplied and unverified.
-- Automatic retrieval only checks the video description, **not comments or external tracklist sites**. A tracklist posted elsewhere can be pasted manually. No claim is made that an entire video has no tracklist anywhere.
-- Pasted tracklists remain usable even if all automatic metadata is unavailable. In that case, the video title/duration remain unverified and the timeline ends at the last known cue rather than inventing a video length.
-- Cue and timeline buttons reload the embedded player at the selected second. A timestamped YouTube link is provided when embedding is restricted. Browser autoplay restrictions may require pressing Play after jumping.
-- A cue marks a posted track entry. Timeline blocks span to the next cue for navigation only. They do not prove that a track plays throughout that interval, and no identification-coverage percentage is shown. Exact blend boundaries are unknown unless the source explicitly supplies a timestamp range labelled transition/blend/mix in/mix out.
-- Missing leading sections and unknown tracks remain striped. Unposted changes can also occur between known cues. At most 199 cues are retained; an oversized tracklist gets a final unprocessed section and warning.
-- For up to 12 named entries, exact normalized artist **and full version title** must match before attaching catalog BPM/listening metadata. This conservative matching deliberately leaves ambiguous remixes and collaborations unmatched.
-- BPM is posted or catalog recording metadata, not measured DJ playback tempo. Explicitly posted energy values are retained. Otherwise, if BPM exists, a **tempo-only energy estimate** maps 70–180 BPM linearly to 1–10, clamped to that range. This is not measured loudness or musical intensity. Estimated points/lines are labelled; missing values are blank and lines do not bridge missing cues.
-- Spotify, SoundCloud, and YouTube destinations are labelled **Search** unless the posted track row includes a valid direct platform URL, in which case they are labelled **Posted link** (not independently verified). An exact catalog match adds a direct Deezer link. No cross-platform identity match is fabricated.
+**Current link-only audio coverage: zero YouTube URLs**, including Cappadocia and Four Tet. Analyze retrieves available published labels, reports unsupported audio access and offers a file fallback. Metadata and embedded playback do not supply analyzable audio.
 
-## Audio recognition is not enabled
+Provider review (2026-11-16): YouTube Data API supplies metadata; its IFrame API controls playback without delivering raw audio/PCM. AudD Enterprise and ACRCloud document recognition from submitted sources, but no raw-audio delivery entitlement for arbitrary public YouTube URLs was verified. Enabling link-only analysis requires a documented audio-delivery endpoint, confirmed coverage and permissions, and any required credentials. Project permission alone does not create that endpoint. No paid service or new credentials were added.
 
-A complete recognition pipeline would require an account/API token for a service such as AudD, an appropriate long-file/enterprise plan, and a supported, authorized audio source accepted by that service. Provider support for the particular source must be confirmed before enabling it; a public YouTube URL alone is not permission or a guarantee of audio access. Recognition also would not by itself establish exact blend boundaries, musical keys, or an energy curve. No audio downloader, paid recognition service, or new credentials were added.
+## Local audio analysis
 
-## Reliability and limits
+Files stay on the user's device. Web Audio decodes the file; a module worker analyzes 30-second segments at 11025 Hz. Limits are 200 MiB, 8 seconds to 2 hours, mono/stereo, subject to browser codec and memory support. Entire-file decoding may exceed memory on smaller devices. The louder channel is selected to avoid stereo phase cancellation.
 
-Provider requests use fixed origins, validated IDs, a 12-second timeout, response-size limits, a short bounded memory cache, and no redirect following. API requests are same-origin checked with a 40 KB body limit and a best-effort per-instance rate limit. The latter is not a distributed abuse-prevention service. Catalog enrichment is bounded to 12 tracks. If catalog enrichment fails, the source cues are still returned with a warning.
+- BPM as played: spectral-flux autocorrelation over 70–180 BPM, with low/medium confidence and half/double-time ambiguity. Weak evidence returns unavailable.
+- Estimated key: chroma/profile matching with unavailable output for ambiguous or insufficient tonal evidence. Confidence is heuristic, not a calibrated probability.
+- Relative energy: RMS level normalized within this file (10th–90th percentile), not catalog energy or perceived musical excitement. Silence stays unavailable and near-constant levels are neutral.
+- Likely transition windows: changes in level, timbre and tonal features in five-second windows. All candidates are low confidence; drops, breakdowns and edits can look similar. These are not measured blend boundaries.
+- Unknown songs retain measurements. Posted labels are applied only when users declare that the file matches the video and optionally supply an offset. Alignment is user-supplied and unverified.
+- Segment clicks seek local audio, or the YouTube embed when alignment is enabled. Timestamped external links handle restricted embedding.
+
+These are prototype heuristic measurements, not a validated professional audio analyzer. No song fingerprint recognition is enabled.
+
+## Published labels
+
+Public watch-page descriptions are parsed without retrieving audio. Optional server-side YOUTUBE_API_KEY uses videos.list for metadata only. Public page access is best-effort; missing metadata is a warning, not evidence that no tracklist exists. Pasted labels work independently. Retrieval checks descriptions, not comments/external sites.
+
+The parser preserves versions, unknown IDs, ambiguous duplicate timestamps and non-song sections. Entry timestamps do not establish blend boundaries. At most 199 cues are retained. Up to 12 named cues receive conservative exact artist/full-title catalog matching. Catalog/posted BPM is displayed separately, never used as measured tempo or energy. The previous tempo-only energy proxy is removed. Spotify, SoundCloud and YouTube links are labelled Search or Posted link; posted links are not independently verified identity matches.
+
+Provider requests use fixed origins, validated IDs, timeouts, size limits, bounded caching and no redirects. APIs enforce same-origin requests, a 40 KB body limit and best-effort per-instance rate limiting.
 
 ## Validation (2026-11-16)
 
-- `npm test`: 23 tests passed, including the existing planner runtime tests and new URL safety, version preservation, timestamps, ambiguous overlaps, explicit transition ranges, provenance, missing-data, public description fallback, and provider-error recovery tests.
-- `npm run test:music:live`: passed against real public services. Provider results can change.
-  - Discover: **Daft Punk – One More Time**, Deezer ID `3135553`. Search returned 15 choices; recommendation lookup returned 8 real songs with catalog links and previews. Some suggestions had BPM and others correctly did not. The seed had no catalog BPM.
-  - [Ben Böhmer above Cappadocia for Cercle](https://www.youtube.com/watch?v=RvRhUHTV_8k): duration **1:24:28**, **14 posted track cues**, **1 interview section**, **0 explicit blend ranges**. Only 1 cue acquired an exact catalog BPM match in this run; other curve data remained missing.
-  - [Four Tet (live set), Boiler Room London](https://www.youtube.com/watch?v=Ca6pjR2TLns): duration **1:17:40**, **no timestamped tracklist in its description**, **1 unidentified full-length section**, **no invented songs, BPM, energy, or transitions**.
-- Next.js and its matching `@next/env` package were patched from 16.4.4 to 16.4.6 because the existing dependency advisory interrupted fresh production builds. Registry advisory [GHSA-mfr8-8qww-v76h](https://github.com/advisories/GHSA-mfr8-8qww-v76h) concerns `use cache` functions called through `unstable_cache()`. The package-lock update reported zero vulnerabilities.
-- The final production build on Next.js 16.4.6 passed without the security warning. All three supported song-link forms (Deezer, Spotify, YouTube) were also checked live with One More Time and returned the intended catalog recording among the choices.
-- Browser QA: song search and exact-version selection returned eight suggestions; clicking Cappadocia's **6:20** cue changed the embed to `start=380` and the player reported **6:21** elapsed. Four Tet's no-tracklist result showed a striped unidentified span and empty charts. Its embed was unavailable in this browser; the timestamped external YouTube fallback remained available. A 390 px viewport had no document overflow.
-- HTTP validation: unsupported catalog URL **400**, spoofed YouTube hostname **400**, cross-origin request **403**.
+- node --test: 28 passing tests, including existing planner tests, silence/uncertainty, known synthetic tempo/key, relative levels, transition candidates, unsupported audio access and metadata recovery.
+- Production build passes with Next.js 16.4.6.
+- Live Discover regression: Daft Punk – One More Time (Deezer 3135553), 15 choices and 8 real recommendations.
+- Cappadocia RvRhUHTV_8k: 14 published track cues plus interview; **audio unsupported**, no measured results. Local metadata duration 1:24:28.
+- Four Tet Ca6pjR2TLns: no timestamped description tracklist, unidentified section; **audio unsupported**, no invented measurements. Local metadata duration 1:17:40.
+- Browser fallback: a generated 60-second test file (not either real mix) decoded and ran through the worker: 119.9/150.3 BPM, C major/D minor, relative energy 0/100, transition candidate 0:22–0:37 around the known 30-second change. Unknown names retained measurements. Clicking the second segment played local audio at 30.2 seconds. Enabling alignment for a navigation-only test set the iframe to start=30; this does not establish that the fixture is actual video audio.
+- Actual DJ-mix measurement accuracy remains unvalidated: no authorized source audio file or verified URL audio provider was available. Synthetic tests validate pipeline behavior, not real-world accuracy.
+- Vercel may omit video duration; missing metadata remains labelled unavailable. Preview authentication is unchanged.
 
 ## Provider references
 
-- [Deezer API](https://developers.deezer.com/api)
-- [YouTube video metadata](https://developers.google.com/youtube/v3/docs/videos/list)
-- [YouTube embedded-player parameters](https://developers.google.com/youtube/player_parameters)
-- [AudD recognition documentation](https://docs.audd.io/)
+- [YouTube metadata](https://developers.google.com/youtube/v3/docs/videos/list)
+- [YouTube IFrame API](https://developers.google.com/youtube/iframe_api_reference)
+- [YouTube developer policies](https://developers.google.com/youtube/terms/developer-policies)
+- [AudD Enterprise](https://docs.audd.io/enterprise/)
+- [ACRCloud file scanning](https://docs.acrcloud.com/reference/console-api/file-scanning)

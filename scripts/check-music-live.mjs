@@ -14,6 +14,8 @@ console.log(JSON.stringify({ test: 'Discover', query: search.query, selected: `$
 
 for (const [id, expectedTracks] of [['RvRhUHTV_8k', true], ['Ca6pjR2TLns', false]]) {
   const breakdown = await buildBreakdown({ url: 'https://www.youtube.com/watch?v=' + id });
+  assert.equal(breakdown.audioAccess.status, 'unsupported');
+  assert.equal(breakdown.audioAnalysis, null, 'metadata must never pretend to be audio analysis');
   assert.equal(breakdown.publishedCount > 0, expectedTracks);
   assert.equal(breakdown.transitions.length, 0, 'no invented blend ranges');
   if (!expectedTracks) {
@@ -22,6 +24,6 @@ for (const [id, expectedTracks] of [['RvRhUHTV_8k', true], ['Ca6pjR2TLns', false
     assert.equal(breakdown.tracks[0].end, breakdown.video.duration);
     assert.equal(breakdown.tracks[0].bpm, null);
   }
-  console.log(JSON.stringify({ test: 'Set Breakdown', ...breakdown.video, source: breakdown.source, publishedTracks: breakdown.publishedCount, sections: breakdown.tracks.length, noTracklist: breakdown.noTracklist, bpms: breakdown.tracks.filter(track => track.bpm).length, transitions: breakdown.transitions.length, first: breakdown.tracks[0].title, last: breakdown.tracks.at(-1).title, warnings: breakdown.warnings }, null, 2));
+  console.log(JSON.stringify({ test: 'Set Breakdown', ...breakdown.video, source: breakdown.source, publishedTracks: breakdown.publishedCount, sections: breakdown.tracks.length, noTracklist: breakdown.noTracklist, audioAccess: breakdown.audioAccess.status, catalogOrPostedBpms: breakdown.tracks.filter(track => track.bpm).length, transitions: breakdown.transitions.length, first: breakdown.tracks[0].title, last: breakdown.tracks.at(-1).title, warnings: breakdown.warnings }, null, 2));
 }
-console.log('PASS: real-song discovery and two real YouTube sets.');
+console.log('PASS: real-song discovery; both YouTube links explicitly return UNSUPPORTED audio access, with no link-only measurements.');
