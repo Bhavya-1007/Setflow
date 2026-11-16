@@ -55,3 +55,7 @@ Provider requests use fixed origins, validated IDs, timeouts, size limits, bound
 - [YouTube developer policies](https://developers.google.com/youtube/terms/developer-policies)
 - [AudD Enterprise](https://docs.audd.io/enterprise/)
 - [ACRCloud file scanning](https://docs.acrcloud.com/reference/console-api/file-scanning)
+
+## Release presentation
+
+The posted-cue timeline remains independent of uploads and known duration. Without duration it is labelled as covering posted cues only. The catalog BPM scatter plot uses exact catalog matches at their posted timestamps, reports coverage among named tracks and highlights the highest value as “Highest catalog BPM found.” Posted-only BPM is excluded from this plot. Missing values remain blank; zero values show “No catalog BPM available.” YouTube-only results have no energy graph. Uploaded-audio measurements, including measured relative energy, remain available separately. Full automated suite: 30 tests passing; production build passing.
