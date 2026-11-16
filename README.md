@@ -31,3 +31,7 @@ Keep actual values in Vercel or a local ignored environment file. The .env.examp
 - Start Stripe checkout from a free account. Complete a sandbox payment and confirm the account shows Pro and can export CSV.
 - Log in through the regular form with the assignment’s course demo credentials. The account should show Demo · Pro.
 - For Canvas, capture the production Neon users table after creating several accounts through signup. Include a fresh signup made just before submission. Show email, name, and creation time in the screenshot.
+
+## Music tools
+
+Discover and Set Breakdown are public read-only tools. Set Breakdown retrieves YouTube labels and analyzes user-selected audio locally. Link-only YouTube audio is currently unsupported. See [behavior, provider findings and tests](docs/music-tools.md).

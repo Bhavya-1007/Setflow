@@ -5,6 +5,7 @@ import { listSets, planAllowance } from '@/lib/sets';
 import { checkoutIsTest } from '@/lib/billing';
 import Brand from '../ui/Brand';
 import Studio from './Studio';
+import StudioNav from '../ui/StudioNav';
 
 export const metadata = { title: 'Studio | SetFlow' };
 
@@ -27,6 +28,7 @@ export default async function StudioPage({ searchParams }) {
           <span className="plan-badge">{user.is_demo ? 'Demo · Pro' : allowance.pro ? 'Pro' : 'Free'}</span>
         </div>
       </header>
+      <StudioNav active="planner" />
       <main className="studio-main">
         <Studio initialSets={savedSets} initialAllowance={allowance} billing={query?.billing}
           testCheckout={Boolean(checkoutIsTest())} />
