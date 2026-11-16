@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { youtubeId, secondsLabel, searchLinks } from '../lib/music/providers.mjs';
 import { catalogTrack, rankCandidates, searchTracks, getTrack } from '../lib/music/discover.mjs';
-import { embeddedJson, parseTracklist, buildBreakdown, withEnergyEstimate } from '../lib/music/breakdown.mjs';
+import { embeddedJson, extractVideoPage, parseTracklist, buildBreakdown, withEnergyEstimate } from '../lib/music/breakdown.mjs';
 
 test('YouTube URLs use exact allowed hosts and validated video IDs', () => {
   for (const url of ['https://youtu.be/RvRhUHTV_8k?t=30', 'https://www.youtube.com/watch?v=RvRhUHTV_8k', 'https://youtube.com/live/RvRhUHTV_8k']) assert.equal(youtubeId(url), 'RvRhUHTV_8k');
@@ -105,3 +105,23 @@ test('pasted tracklists override descriptions with explicit provenance', async (
 });
 
 test('long timestamps are displayed correctly', () => { assert.equal(secondsLabel(3794), '1:03:14'); assert.equal(secondsLabel(380), '6:20'); });
+
+test('full displayed description is used when YouTube withholds playback metadata', () => {
+  const initial = { contents: { twoColumnWatchNextResults: { results: { results: { contents: [
+    { videoPrimaryInfoRenderer: { title: { runs: [{ text: 'Real set' }] } } },
+    { videoSecondaryInfoRenderer: { attributedDescription: { content: '0:00 Artist - Real song\n5:00 Artist - Another' }, owner: { videoOwnerRenderer: { title: { runs: [{ text: 'Channel' }] } } } } },
+  ] } } } } };
+  const html = 'var ytInitialPlayerResponse = {"playabilityStatus":{"status":"LOGIN_REQUIRED"}}; var ytInitialData = ' + JSON.stringify(initial) + '; <meta itemprop="duration" content="PT10M30S">';
+  const video = extractVideoPage(html);
+  assert.equal(video.title, 'Real set'); assert.equal(video.author, 'Channel'); assert.equal(video.duration, 630);
+  assert.equal(parseTracklist(video.description, video.duration).publishedCount, 2);
+  assert.equal(extractVideoPage('<meta name="description" content="Truncated description...">'), null);
+});
+
+test('manual tracklists remain usable when all automatic metadata is unavailable', async () => {
+  const result = await buildBreakdown({ url: 'https://youtu.be/Ca6pjR2TLns', tracklist: '0:00 Artist - Pasted\n6:00 Other - Song' }, {
+    metadata: async () => { throw new Error('Unavailable'); }, match: async () => null,
+  });
+  assert.equal(result.publishedCount, 2); assert.equal(result.video.duration, null);
+  assert.equal(result.tracks.at(-1).end, null); assert.match(result.warnings.join(' '), /could not be verified/);
+});

@@ -13,9 +13,10 @@ The three navigation links are **Set Planner**, **Discover**, and **Set Breakdow
 ## Set Breakdown
 
 - Accepts public YouTube video URLs. Uses the public watch-page description and duration without retrieving audio. If `YOUTUBE_API_KEY` is configured, uses YouTube Data API v3 `videos.list` (`snippet,contentDetails`) instead. The key is optional and server-only; it is not required for the tested first version.
-- A description-access error is shown as an error, never as proof that a tracklist does not exist. Public page metadata is best-effort: YouTube can change its page format or limit server access. The API-key option is the more stable integration.
+- A description-access error is shown as an error, never as proof that a tracklist does not exist. Public page metadata is best-effort: YouTube can change its page format or limit server access. The parser checks both playback metadata and the full displayed description in the page data, never the truncated HTML description tag. The API-key option is the more stable integration.
 - Parses timestamps before or after an artist–title entry, preserves remix text, sorts cues, retains unknown IDs, flags duplicate timestamps as ambiguous, and separates intro/interview/outro sections. A pasted tracklist can replace the description, clearly labelled user-supplied and unverified.
 - Automatic retrieval only checks the video description, **not comments or external tracklist sites**. A tracklist posted elsewhere can be pasted manually. No claim is made that an entire video has no tracklist anywhere.
+- Pasted tracklists remain usable even if all automatic metadata is unavailable. In that case, the video title/duration remain unverified and the timeline ends at the last known cue rather than inventing a video length.
 - Cue and timeline buttons reload the embedded player at the selected second. A timestamped YouTube link is provided when embedding is restricted. Browser autoplay restrictions may require pressing Play after jumping.
 - A cue marks a posted track entry. Timeline blocks span to the next cue for navigation only. They do not prove that a track plays throughout that interval, and no identification-coverage percentage is shown. Exact blend boundaries are unknown unless the source explicitly supplies a timestamp range labelled transition/blend/mix in/mix out.
 - Missing leading sections and unknown tracks remain striped. Unposted changes can also occur between known cues. At most 199 cues are retained; an oversized tracklist gets a final unprocessed section and warning.
@@ -33,7 +34,7 @@ Provider requests use fixed origins, validated IDs, a 12-second timeout, respons
 
 ## Validation (2026-11-16)
 
-- `npm test`: 21 tests passed, including the existing planner runtime tests and new URL safety, version preservation, timestamps, ambiguous overlaps, explicit transition ranges, provenance, missing-data and provider-error tests.
+- `npm test`: 23 tests passed, including the existing planner runtime tests and new URL safety, version preservation, timestamps, ambiguous overlaps, explicit transition ranges, provenance, missing-data, public description fallback, and provider-error recovery tests.
 - `npm run test:music:live`: passed against real public services. Provider results can change.
   - Discover: **Daft Punk – One More Time**, Deezer ID `3135553`. Search returned 15 choices; recommendation lookup returned 8 real songs with catalog links and previews. Some suggestions had BPM and others correctly did not. The seed had no catalog BPM.
   - [Ben Böhmer above Cappadocia for Cercle](https://www.youtube.com/watch?v=RvRhUHTV_8k): duration **1:24:28**, **14 posted track cues**, **1 interview section**, **0 explicit blend ranges**. Only 1 cue acquired an exact catalog BPM match in this run; other curve data remained missing.
